@@ -70,6 +70,9 @@ Agent::Action MyAI::getAction
 	if (glitter && !myAgent.hasGold) {
 		myAgent.hasGold = true; //record that we got the gold
 
+		myExitActionStack.push(TURN_LEFT); //for manual backtrack stack ensure their last action on top is turning around 180 degrees
+		myExitActionStack.push(TURN_LEFT);
+
 		chosenAction = GRAB;
 		return chosenAction; //pick up the gold
 	}
@@ -92,6 +95,29 @@ Agent::Action MyAI::getAction
 		chosenAction = myActionQueue.front();
 		myActionQueue.pop();
 
+		//put inverse of chosen movement action into return queue, except for forward which is always forward
+		if (chosenAction == FORWARD) {
+			myExitActionStack.push(chosenAction);
+			if (myAgent.facing == NORTH) myAgent.yPos += 1;
+			else if (myAgent.facing == EAST) myAgent.xPos += 1;
+			else if (myAgent.facing == SOUTH) myAgent.yPos -= 1;
+			else if (myAgent.facing == WEST) myAgent.xPos -= 1;
+		}
+		else if (chosenAction == TURN_LEFT) {
+			myExitActionStack.push(TURN_RIGHT);
+			if (myAgent.facing == NORTH) myAgent.facing = WEST;
+			else if (myAgent.facing == EAST) myAgent.facing = NORTH;
+			else if (myAgent.facing == SOUTH) myAgent.facing = EAST;
+			else if (myAgent.facing == WEST) myAgent.facing = SOUTH;
+		}
+		else if (chosenAction == TURN_RIGHT) {
+			myExitActionStack.push(TURN_LEFT);
+			if (myAgent.facing == NORTH) myAgent.facing = EAST;
+			else if (myAgent.facing == EAST) myAgent.facing = SOUTH;
+			else if (myAgent.facing == SOUTH) myAgent.facing = WEST;
+			else if (myAgent.facing == WEST) myAgent.facing = NORTH;
+		}
+
 		return chosenAction;
 	}
 	else
@@ -100,13 +126,13 @@ Agent::Action MyAI::getAction
 		//update our map//
 		if (chosenAction == FORWARD && rooms[myAgent.xPos][myAgent.yPos].explored == false) //if our last action was moving into a new square, and this square is previously unexplored
 		{
-			// TODO: remove this room from our Frontier rooms
+			//remove this room from our Frontier rooms
 			room tempRoom = frontierQueue.top();
 			frontierQueue.pop();
 
 			updateRoom(rooms[myAgent.xPos][myAgent.yPos]); //update current room + adjacent rooms (handled in the update room function automatically)
-			// TODO: add this room to our Explored rooms
-			//exploredMap.insert(std::pair <std::pair<int, int>, room>((myAgent.xPos, myAgent.yPos), tempRoom)); //TODO: Make a custom pair type with room
+			//add this room to our Explored rooms
+			exploredMap[std::pair<int, int>(myAgent.xPos, myAgent.yPos)] = tempRoom;
 		}
 		else if (firstTurn && myAgent.xPos == 0 && myAgent.yPos == 0) //first turn
 		{
@@ -124,7 +150,7 @@ Agent::Action MyAI::getAction
 		// TODOR: UPDATE THE PLAYER/AGENTS POSITION AFTER EVERY MOVE
 		// TODO: Save all rotate/move actions to stack so we can backtrack out when we have gold
 		// TODO: Ensure that when we have gold, backtracking is the only priority and getting out
-		//execute first action in queue//
+		//execute first action in queue// TODO: figure out how to defer this to the original update action branch, since we have lots of nice code there to take advantage of
 	}
 
 	return chosenAction; //if we reach this state there's been an error

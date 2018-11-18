@@ -89,7 +89,7 @@ private:
 
 	std::queue<Action> myActionQueue;
 	std::priority_queue<room, std::vector<room>, CompareRoom> frontierQueue;
-	std::map<int, room> exploredMap;
+	std::map<std::pair<int,int>, room> exploredMap;
 	std::stack<Action> myExitActionStack;
 
 	bool firstTurn;
