@@ -26,15 +26,20 @@
 
 class MyAI : public Agent
 {
-private:
 	enum Direction { NORTH, EAST, SOUTH, WEST };
-	enum Percepts {STENCH, BREEZE, GLITTER, BUMP, SCREAM};
+	enum Percepts { STENCH, BREEZE, GLITTER, BUMP, SCREAM };
 
 	struct room {
+		//this room's percepts
 		bool stench = false, breeze = false, glitter = false, bump = false, scream = false;
-		bool safe = false, pit = false, maybePit = false, wumpus = false, maybeWumpus = false, goldRoom = false, explored = false;
+
+		//this room's status
+		bool safe = false, goldRoom = false, explored = false;
 
 		int fValue = 1, gValue = 1, hValue = 0, xLoc, yLoc;
+
+		double pWumpus = 0; //probability wumpus is in this room
+		double pPitfall = 0; //probability pitfall is in this room
 
 		room(int xLoc, int yLoc) : xLoc(xLoc), yLoc(yLoc)
 		{
@@ -44,24 +49,18 @@ private:
 
 	struct agent {
 		int xPos = 0, yPos = 0;
-		Direction myFacing = EAST; //agent starts facing right
+		bool hasGold = false, hasArrow = true;
+		Direction facing = EAST; //agent starts facing right
 	};
 
 	struct {
-		bool wumpusIsDead = false, agentHasGold = false, agentHasArrow = true;
+		bool wumpusIsDead = false;
+		int wumpusTracks = 0;
 		int mapWidth = 7, mapHeight = 7; //map can be minimum of 4x4, but we assume 7 and shrink on bump
 		const int mapMaxDimensions = 7; //map can be maximum of 7x7
 
 		bool mapWidthKnown = false, mapHeightKnown = false;
-
-		room rooms[7][7]; //array to hold our room network
-		agent myAgent; //our agent's information
 	} mapState; //this will hold our map state in the current turn
-
-	std::queue<Action> myActionQueue;
-
-	bool firstTurn;
-	bool percepts[5]; //our percepts that we receive each round
 
 public:
 	MyAI(void);
@@ -78,10 +77,17 @@ public:
 	//perform A* search and return most optimal route to destination
 	std::queue<Action> findPath(int xDest, int yDest);
 
-	//instantiate a new room and add it to our map
-	void addRoom(bool percepts[]);
-
 	void updateRoom(room &myRoom);
+
+private:
+	agent myAgent; //our agent's information
+	room rooms[7][7]; //array to hold our room network
+
+	std::queue<Action> myActionQueue;
+
+	bool firstTurn;
+	bool percepts[5]; //our percepts that we receive each round
+	Action chosenAction; //what we return as our action each turn, this is defaulted to CLIMB in the constructor
 };
 
 #endif
