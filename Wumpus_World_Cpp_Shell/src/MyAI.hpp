@@ -22,6 +22,8 @@
 
 #include "Agent.hpp"
 #include <queue>
+#include <stack>
+#include <map>
 #include <iostream>
 
 class MyAI : public Agent
@@ -40,10 +42,12 @@ class MyAI : public Agent
 
 		double pWumpus = 0; //probability wumpus is in this room
 		double pPitfall = 0; //probability pitfall is in this room
+	};
 
-		room(int xLoc, int yLoc) : xLoc(xLoc), yLoc(yLoc)
+	struct CompareRoom {
+		bool operator()(room const& r1, room const& r2)
 		{
-
+			return r1.fValue > r2.fValue;
 		}
 	};
 
@@ -84,6 +88,9 @@ private:
 	room rooms[7][7]; //array to hold our room network
 
 	std::queue<Action> myActionQueue;
+	std::priority_queue<room, std::vector<room>, CompareRoom> frontierQueue;
+	std::map<int, room> exploredMap;
+	std::stack<Action> myExitActionStack;
 
 	bool firstTurn;
 	bool percepts[5]; //our percepts that we receive each round
