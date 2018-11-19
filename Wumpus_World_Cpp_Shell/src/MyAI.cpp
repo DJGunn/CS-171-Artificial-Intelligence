@@ -23,6 +23,7 @@
 MyAI::MyAI() : Agent()
 {
 	firstTurn = true; //initialize our first turn flag
+	holdNode = false;
 
 	//populate our initial map of rooms
 	for (int i = 0; i < 7; i++)
@@ -99,7 +100,7 @@ Agent::Action MyAI::getAction
 		myActionQueue.pop();
 
 		if (chosenAction == FORWARD || chosenAction == TURN_LEFT || chosenAction == TURN_RIGHT) {
-			updateAgentLocation(); //make sure we update our agent's location
+			updateAgentLocation(chosenAction); //make sure we update our agent's location
 			updateMapHFunction();
 		}
 
@@ -107,19 +108,31 @@ Agent::Action MyAI::getAction
 	}
 	else
 	{
-		//If we are here it means that we've just finished movement maybe; check chosenAction, which still holds our last action
-		//update our map//
-		if (chosenAction == FORWARD && rooms[myAgent.xPos][myAgent.yPos].explored == false && !firstTurn) //if our last action was moving into a new square, and this square is previously unexplored
-		{
-			//remove this room from our Frontier rooms
-			room tempRoom = frontierQueue.top();
-			frontierQueue.pop(); //NOTE: the queue popping and map adding are parallel but different process from the process we use to explore and update the rooms
+		//we're in room 0,0, room 0,0 needs to be in explored and its adjacent needs to be in frontier; for our first turn we need to special
+		//update the rooms around us now that we have the percepts, as a 1-time thing since first turn.
+		if (holdNode == false) { //get a new node
 
-			updateRoom(rooms[myAgent.xPos][myAgent.yPos]); //update current room + adjacent rooms (handled in the update room function automatically)
-			//add this room to our Explored rooms
-			exploredMap[std::pair<int, int>(myAgent.xPos, myAgent.yPos)] = tempRoom;
+			heldNode = frontierQueue.top();
+			frontierQueue.pop();
+			holdNode = true;
 		}
-		else if (firstTurn && myAgent.xPos == 0 && myAgent.yPos == 0) //first turn
+		//then after that we need to take the best option out of frontier, extract the action out of it (repeat each round until reached if needed), and then put it into explored once we arrive
+		if (backtracking) {
+			//move, update map, update position, check to see if adjacent then stop backtracking if so
+		}
+		chosenAction = heldNode.nextAction;
+		updateRoom(rooms[myAgent.xPos][myAgent.yPos]);
+		updateAgentLocation(chosenAction);
+
+		if (myAgent.xPos == heldNode.xLoc && myAgent.yPos == heldNode.yLoc) {
+			holdNode = false;
+			exploredMap[std::pair<int, int>(myAgent.xPos, myAgent.yPos)] = heldNode;
+		}
+		//account for if we need to crawl out immediately
+		
+
+		//our first turn is special
+		if (firstTurn && myAgent.xPos == 0 && myAgent.yPos == 0)
 		{
 			if (percepts[STENCH] || percepts[BREEZE]) return CLIMB;
 			firstTurn = false;
@@ -130,11 +143,23 @@ Agent::Action MyAI::getAction
 			myAgent.xPos += 1; //manually update our position for the first movement
 			return FORWARD; //our first move is by default forward if there is no stench or breeze or glitter TODO: put in 		myActionQueue.push(frontierQueue.top().nextAction); and this doesn't update our position does it?
 		}
+		//every turn after our first turn will follow this branch
+		if (chosenAction == FORWARD && rooms[myAgent.xPos][myAgent.yPos].explored == false) //if our last action was moving into a new square, and this square is previously unexplored
+		{
+			//remove this room from our Frontier rooms
+			room tempRoom = frontierQueue.top();
+			frontierQueue.pop(); //NOTE: the queue popping and map adding are parallel but different process from the process we use to explore and update the rooms
+
+			updateRoom(rooms[myAgent.xPos][myAgent.yPos]); //update current room + adjacent rooms (handled in the update room function automatically)
+			//add this room to our Explored rooms
+			exploredMap[std::pair<int, int>(myAgent.xPos, myAgent.yPos)] = tempRoom;
+		}
+
 
 		//push action into queue
 		myActionQueue.push(frontierQueue.top().nextAction);
 		chosenAction = myActionQueue.front;
-		updateAgentLocation(); //update our agent's location
+		updateAgentLocation(chosenAction); //update our agent's location
 
 		//choose an action//
 		// TODO: Choose an action; this action will be attempting to get to the nearest unexplored tile
@@ -316,30 +341,30 @@ void MyAI::updateMapHFunction()
 
 			//f(x) = #of rotations + #moves
 			rooms[x][y].gValue = tempGvalue; //number of rotations to reach our target (not the most efficient, can optimize it later)
-			rooms[x][y].hValue = abs(myAgent.xPos - x) + abs(myAgent.yPos - y); //the manhattan distance
+			rooms[x][y].hValue = abs(myAgent.xPos - x) + abs(myAgent.yPos - y) - 1; //the manhattan distance
 			rooms[x][y].fValue = rooms[x][y].gValue + rooms[x][y].hValue + rooms[x][y].pWumpus * 1000.0f + rooms[x][y].pPitfall * 1000.0f;
 		}
 	}
 }
 
-void MyAI::updateAgentLocation()
+void MyAI::updateAgentLocation(Action currentAction)
 {
 	//put inverse of chosen movement action into return queue, except for forward which is always forward
-	if (chosenAction == FORWARD) {
-		myExitActionStack.push(chosenAction);
+	if (currentAction == FORWARD) {
+		myExitActionStack.push(FORWARD);
 		if (myAgent.facing == NORTH) myAgent.yPos += 1;
 		else if (myAgent.facing == EAST) myAgent.xPos += 1;
 		else if (myAgent.facing == SOUTH) myAgent.yPos -= 1;
 		else if (myAgent.facing == WEST) myAgent.xPos -= 1;
 	}
-	else if (chosenAction == TURN_LEFT) {
+	else if (currentAction == TURN_LEFT) {
 		myExitActionStack.push(TURN_RIGHT);
 		if (myAgent.facing == NORTH) myAgent.facing = WEST;
 		else if (myAgent.facing == EAST) myAgent.facing = NORTH;
 		else if (myAgent.facing == SOUTH) myAgent.facing = EAST;
 		else if (myAgent.facing == WEST) myAgent.facing = SOUTH;
 	}
-	else if (chosenAction == TURN_RIGHT) {
+	else if (currentAction == TURN_RIGHT) {
 		myExitActionStack.push(TURN_LEFT);
 		if (myAgent.facing == NORTH) myAgent.facing = EAST;
 		else if (myAgent.facing == EAST) myAgent.facing = SOUTH;

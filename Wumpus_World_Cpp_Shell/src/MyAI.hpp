@@ -88,7 +88,9 @@ public:
 
 	void updateMapHFunction();
 
-	void updateAgentLocation();
+	void updateAgentLocation(Action currentAction);
+
+	void initiateBacktracking();
 
 private:
 	agent myAgent; //our agent's information
@@ -99,6 +101,9 @@ private:
 	std::map<std::pair<int,int>, room> exploredMap;
 	std::stack<Action> myExitActionStack;
 
+	bool backtracking;
+	bool holdNode;
+	room heldNode;
 	bool firstTurn;
 	bool percepts[5]; //our percepts that we receive each round
 	Action chosenAction; //what we return as our action each turn, this is defaulted to CLIMB in the constructor
