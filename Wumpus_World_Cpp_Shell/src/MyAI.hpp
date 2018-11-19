@@ -88,6 +88,8 @@ public:
 
 	void updateMapHFunction();
 
+	void updateAgentLocation();
+
 private:
 	agent myAgent; //our agent's information
 	room rooms[7][7]; //array to hold our room network

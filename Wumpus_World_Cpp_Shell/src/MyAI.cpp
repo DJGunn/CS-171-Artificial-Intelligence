@@ -98,30 +98,10 @@ Agent::Action MyAI::getAction
 		chosenAction = myActionQueue.front();
 		myActionQueue.pop();
 
-		//put inverse of chosen movement action into return queue, except for forward which is always forward
-		if (chosenAction == FORWARD) {
-			myExitActionStack.push(chosenAction);
-			if (myAgent.facing == NORTH) myAgent.yPos += 1;
-			else if (myAgent.facing == EAST) myAgent.xPos += 1;
-			else if (myAgent.facing == SOUTH) myAgent.yPos -= 1;
-			else if (myAgent.facing == WEST) myAgent.xPos -= 1;
+		if (chosenAction == FORWARD || chosenAction == TURN_LEFT || chosenAction == TURN_RIGHT) {
+			updateAgentLocation(); //make sure we update our agent's location
+			updateMapHFunction();
 		}
-		else if (chosenAction == TURN_LEFT) {
-			myExitActionStack.push(TURN_RIGHT);
-			if (myAgent.facing == NORTH) myAgent.facing = WEST;
-			else if (myAgent.facing == EAST) myAgent.facing = NORTH;
-			else if (myAgent.facing == SOUTH) myAgent.facing = EAST;
-			else if (myAgent.facing == WEST) myAgent.facing = SOUTH;
-		}
-		else if (chosenAction == TURN_RIGHT) {
-			myExitActionStack.push(TURN_LEFT);
-			if (myAgent.facing == NORTH) myAgent.facing = EAST;
-			else if (myAgent.facing == EAST) myAgent.facing = SOUTH;
-			else if (myAgent.facing == SOUTH) myAgent.facing = WEST;
-			else if (myAgent.facing == WEST) myAgent.facing = NORTH;
-		}
-
-		if (chosenAction == FORWARD || chosenAction == TURN_LEFT || chosenAction == TURN_RIGHT) updateMapHFunction();
 
 		return chosenAction;
 	}
@@ -147,11 +127,14 @@ Agent::Action MyAI::getAction
 			//first room is put into the queue by constructor
 			updateRoom(rooms[myAgent.xPos][myAgent.yPos]);
 
+			myAgent.xPos += 1; //manually update our position for the first movement
 			return FORWARD; //our first move is by default forward if there is no stench or breeze or glitter TODO: put in 		myActionQueue.push(frontierQueue.top().nextAction); and this doesn't update our position does it?
 		}
 
 		//push action into queue
 		myActionQueue.push(frontierQueue.top().nextAction);
+		chosenAction = myActionQueue.front;
+		updateAgentLocation(); //update our agent's location
 
 		//choose an action//
 		// TODO: Choose an action; this action will be attempting to get to the nearest unexplored tile
@@ -200,12 +183,24 @@ void MyAI::updateRoom(room &thisRoom)
 		if (myAgent.xPos + 1 == mapState.mapMaxDimensions && !mapState.mapWidthKnown) mapState.mapWidthKnown = true;
 		if (myAgent.yPos + 1 == mapState.mapMaxDimensions && !mapState.mapHeightKnown) mapState.mapHeightKnown = true;
 
-		//update the four rooms around us
-		if (thisRoom.xLoc - 1 > 0) updateRoom(rooms[thisRoom.xLoc - 1][thisRoom.yLoc]); //update left room
-		if (thisRoom.xLoc + 1 < mapState.mapWidth) updateRoom(rooms[thisRoom.xLoc + 1][thisRoom.yLoc]); //update right room
+		//update the four rooms around us and add them to the frontier
+		if (thisRoom.xLoc - 1 > 0) {
+			updateRoom(rooms[thisRoom.xLoc - 1][thisRoom.yLoc]); //update left room
+			frontierQueue.push(rooms[thisRoom.xLoc - 1][thisRoom.yLoc]); //put left room into frontier
+		}
+		if (thisRoom.xLoc + 1 < mapState.mapWidth) {
+			updateRoom(rooms[thisRoom.xLoc + 1][thisRoom.yLoc]); //update right room
+			frontierQueue.push(rooms[thisRoom.xLoc + 1][thisRoom.yLoc]); //put right room into frontier
+		}
 
-		if (thisRoom.yLoc - 1 > 0) updateRoom(rooms[thisRoom.xLoc][thisRoom.yLoc - 1]); //update bottom room
-		if (thisRoom.yLoc + 1 < mapState.mapHeight) updateRoom(rooms[thisRoom.xLoc][thisRoom.yLoc + 1]); //update right room
+		if (thisRoom.yLoc - 1 > 0) {
+			updateRoom(rooms[thisRoom.xLoc][thisRoom.yLoc - 1]); //update bottom room
+			frontierQueue.push(rooms[thisRoom.xLoc][thisRoom.yLoc - 1]); //put bottom room into frontier
+		}
+		if (thisRoom.yLoc + 1 < mapState.mapHeight) {
+			updateRoom(rooms[thisRoom.xLoc][thisRoom.yLoc + 1]); //update top room
+			frontierQueue.push(rooms[thisRoom.xLoc][thisRoom.yLoc + 1]); //put top room into frontier
+		}
 	}
 	//if this room isn't the room the agent is in, then it's adjacent, update appropriately
 	else if ((myAgent.xPos != thisRoom.xLoc || myAgent.yPos != thisRoom.yLoc) && thisRoom.explored == false)
@@ -324,6 +319,32 @@ void MyAI::updateMapHFunction()
 			rooms[x][y].hValue = abs(myAgent.xPos - x) + abs(myAgent.yPos - y); //the manhattan distance
 			rooms[x][y].fValue = rooms[x][y].gValue + rooms[x][y].hValue + rooms[x][y].pWumpus * 1000.0f + rooms[x][y].pPitfall * 1000.0f;
 		}
+	}
+}
+
+void MyAI::updateAgentLocation()
+{
+	//put inverse of chosen movement action into return queue, except for forward which is always forward
+	if (chosenAction == FORWARD) {
+		myExitActionStack.push(chosenAction);
+		if (myAgent.facing == NORTH) myAgent.yPos += 1;
+		else if (myAgent.facing == EAST) myAgent.xPos += 1;
+		else if (myAgent.facing == SOUTH) myAgent.yPos -= 1;
+		else if (myAgent.facing == WEST) myAgent.xPos -= 1;
+	}
+	else if (chosenAction == TURN_LEFT) {
+		myExitActionStack.push(TURN_RIGHT);
+		if (myAgent.facing == NORTH) myAgent.facing = WEST;
+		else if (myAgent.facing == EAST) myAgent.facing = NORTH;
+		else if (myAgent.facing == SOUTH) myAgent.facing = EAST;
+		else if (myAgent.facing == WEST) myAgent.facing = SOUTH;
+	}
+	else if (chosenAction == TURN_RIGHT) {
+		myExitActionStack.push(TURN_LEFT);
+		if (myAgent.facing == NORTH) myAgent.facing = EAST;
+		else if (myAgent.facing == EAST) myAgent.facing = SOUTH;
+		else if (myAgent.facing == SOUTH) myAgent.facing = WEST;
+		else if (myAgent.facing == WEST) myAgent.facing = NORTH;
 	}
 }
 
