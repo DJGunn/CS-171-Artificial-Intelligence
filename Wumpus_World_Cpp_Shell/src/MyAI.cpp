@@ -44,6 +44,9 @@ MyAI::MyAI() : Agent()
 
 	//preload our frontier with its first node
 	frontierQueue.push(rooms[0][0]); // TODO: need to make sure that this is properly 'passed by reference'
+
+	//fill out the initial h-function values
+	updateMapHFunction();
 }
 	
 Agent::Action MyAI::getAction
@@ -128,7 +131,7 @@ Agent::Action MyAI::getAction
 		{
 			//remove this room from our Frontier rooms
 			room tempRoom = frontierQueue.top();
-			frontierQueue.pop();
+			frontierQueue.pop(); //NOTE: the queue popping and map adding are parallel but different process from the process we use to explore and update the rooms
 
 			updateRoom(rooms[myAgent.xPos][myAgent.yPos]); //update current room + adjacent rooms (handled in the update room function automatically)
 			//add this room to our Explored rooms
@@ -139,17 +142,14 @@ Agent::Action MyAI::getAction
 			if (percepts[STENCH] || percepts[BREEZE]) return CLIMB;
 			firstTurn = false;
 
-			//insert the first room into explored, since its never in the f
+			//first room is put into the queue by constructor
 			updateRoom(rooms[myAgent.xPos][myAgent.yPos]);
 		}
 
 
 
 		//choose an action//
-		// TODO: Choose an action
-		// TODOR: UPDATE THE PLAYER/AGENTS POSITION AFTER EVERY MOVE
-		// TODO: Save all rotate/move actions to stack so we can backtrack out when we have gold
-		// TODO: Ensure that when we have gold, backtracking is the only priority and getting out
+		// TODO: Choose an action; this action will be attempting to get to the nearest unexplored tile
 		//execute first action in queue// TODO: figure out how to defer this to the original update action branch, since we have lots of nice code there to take advantage of
 	}
 
@@ -225,6 +225,48 @@ void MyAI::updateRoom(room &thisRoom)
 		if (!percepts[STENCH]) thisRoom.pWumpus = 0.0;
 		if (!percepts[BREEZE]) thisRoom.pPitfall = 0.0;
 		if (thisRoom.pWumpus == 0 && thisRoom.pPitfall == 0) thisRoom.safe = true;
+	}
+}
+
+void MyAI::updateMapHFunction()
+{
+	//populate our initial map of rooms
+	for (int x = 0; x < 7; x++)
+	{
+		for (int y = 0; y < 7; y++)
+		{
+			int tempGvalue = 0;
+
+			if (myAgent.facing == EAST)
+			{
+				if (x > myAgent.xPos) tempGvalue += 0;
+				else if (x < myAgent.xPos) tempGvalue += 2;
+				if (y > myAgent.yPos || y < myAgent.yPos) tempGvalue += 1;
+			}
+			else if (myAgent.facing == WEST)
+			{
+				if (x > myAgent.xPos) tempGvalue += 2;
+				else if (x < myAgent.xPos) tempGvalue += 0;
+				if (y > myAgent.yPos || y < myAgent.yPos) tempGvalue += 1;
+			}
+			else if (myAgent.facing == NORTH)
+			{
+				if (x > myAgent.xPos || x < myAgent.xPos) tempGvalue += 1;
+				if (y > myAgent.yPos) tempGvalue += 0;
+				else if (y < myAgent.yPos) tempGvalue += 2;
+			}
+			else if (myAgent.facing == SOUTH)
+			{
+				if (x > myAgent.xPos || x < myAgent.xPos) tempGvalue += 1;
+				if (y > myAgent.yPos) tempGvalue += 2;
+				else if (y < myAgent.yPos) tempGvalue += 0;
+			}
+
+			//f(x) = #of rotations + #moves
+			rooms[x][y].gValue = tempGvalue; //number of rotations to reach our target (not the most efficient, can optimize it later)
+			rooms[x][y].hValue = abs(myAgent.xPos - x)+ abs(myAgent.yPos - y); //the manhattan distance
+			rooms[x][y].fValue = rooms[x][y].gValue + rooms[x][y].hValue;
+		}
 	}
 }
 

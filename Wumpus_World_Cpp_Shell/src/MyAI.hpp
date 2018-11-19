@@ -24,6 +24,7 @@
 #include <queue>
 #include <stack>
 #include <map>
+#include <cmath>
 #include <iostream>
 
 class MyAI : public Agent
@@ -82,6 +83,8 @@ public:
 	std::queue<Action> findPath(int xDest, int yDest);
 
 	void updateRoom(room &myRoom);
+
+	void updateMapHFunction();
 
 private:
 	agent myAgent; //our agent's information
