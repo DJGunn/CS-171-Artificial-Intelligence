@@ -121,13 +121,15 @@ Agent::Action MyAI::getAction
 			else if (myAgent.facing == WEST) myAgent.facing = NORTH;
 		}
 
+		if (chosenAction == FORWARD || chosenAction == TURN_LEFT || chosenAction == TURN_RIGHT) updateMapHFunction();
+
 		return chosenAction;
 	}
 	else
 	{
 		//If we are here it means that we've just finished movement maybe; check chosenAction, which still holds our last action
 		//update our map//
-		if (chosenAction == FORWARD && rooms[myAgent.xPos][myAgent.yPos].explored == false) //if our last action was moving into a new square, and this square is previously unexplored
+		if (chosenAction == FORWARD && rooms[myAgent.xPos][myAgent.yPos].explored == false && !firstTurn) //if our last action was moving into a new square, and this square is previously unexplored
 		{
 			//remove this room from our Frontier rooms
 			room tempRoom = frontierQueue.top();
@@ -144,9 +146,12 @@ Agent::Action MyAI::getAction
 
 			//first room is put into the queue by constructor
 			updateRoom(rooms[myAgent.xPos][myAgent.yPos]);
+
+			return FORWARD; //our first move is by default forward if there is no stench or breeze or glitter TODO: put in 		myActionQueue.push(frontierQueue.top().nextAction); and this doesn't update our position does it?
 		}
 
-
+		//push action into queue
+		myActionQueue.push(frontierQueue.top().nextAction);
 
 		//choose an action//
 		// TODO: Choose an action; this action will be attempting to get to the nearest unexplored tile
@@ -239,33 +244,85 @@ void MyAI::updateMapHFunction()
 
 			if (myAgent.facing == EAST)
 			{
-				if (x > myAgent.xPos) tempGvalue += 0;
-				else if (x < myAgent.xPos) tempGvalue += 2;
-				if (y > myAgent.yPos || y < myAgent.yPos) tempGvalue += 1;
+				if (x > myAgent.xPos) { 
+					tempGvalue += 0;
+					rooms[x][y].nextAction = FORWARD; 
+				}
+				else if (x < myAgent.xPos) {
+					tempGvalue += 2;
+					rooms[x][y].nextAction = TURN_LEFT;
+				}
+				if (y > myAgent.yPos) {
+					tempGvalue += 1;
+					rooms[x][y].nextAction = TURN_LEFT;
+				}
+				else if (y < myAgent.yPos) {
+					tempGvalue += 1;
+					rooms[x][y].nextAction = TURN_RIGHT;
+				}
 			}
 			else if (myAgent.facing == WEST)
 			{
-				if (x > myAgent.xPos) tempGvalue += 2;
-				else if (x < myAgent.xPos) tempGvalue += 0;
-				if (y > myAgent.yPos || y < myAgent.yPos) tempGvalue += 1;
+				if (x > myAgent.xPos) {
+					tempGvalue += 2;
+					rooms[x][y].nextAction = TURN_RIGHT;
+				}
+				else if (x < myAgent.xPos) {
+					tempGvalue += 0;
+					rooms[x][y].nextAction = FORWARD;
+				}
+				if (y > myAgent.yPos) {
+					tempGvalue += 1;
+					rooms[x][y].nextAction = TURN_RIGHT;
+				}
+				if (y < myAgent.yPos) {
+					tempGvalue += 1;
+					rooms[x][y].nextAction = TURN_LEFT;
+				}
 			}
 			else if (myAgent.facing == NORTH)
 			{
-				if (x > myAgent.xPos || x < myAgent.xPos) tempGvalue += 1;
-				if (y > myAgent.yPos) tempGvalue += 0;
-				else if (y < myAgent.yPos) tempGvalue += 2;
+				if (x > myAgent.xPos) {
+					tempGvalue += 1;
+					rooms[x][y].nextAction = TURN_RIGHT;
+				}
+				else if (x < myAgent.xPos) {
+					tempGvalue += 1;
+					rooms[x][y].nextAction = TURN_LEFT;
+				}
+				if (y > myAgent.yPos) {
+					tempGvalue += 0;
+					rooms[x][y].nextAction = FORWARD;
+				}
+				else if (y < myAgent.yPos) {
+					tempGvalue += 2;
+					rooms[x][y].nextAction = TURN_RIGHT;
+				}
 			}
 			else if (myAgent.facing == SOUTH)
 			{
-				if (x > myAgent.xPos || x < myAgent.xPos) tempGvalue += 1;
-				if (y > myAgent.yPos) tempGvalue += 2;
-				else if (y < myAgent.yPos) tempGvalue += 0;
+				if (x > myAgent.xPos) {
+					tempGvalue += 1;
+					rooms[x][y].nextAction = TURN_LEFT;
+				}
+				else if (x < myAgent.xPos) {
+					tempGvalue += 1;
+					rooms[x][y].nextAction = TURN_RIGHT;
+				}
+				if (y > myAgent.yPos) {
+					tempGvalue += 2;
+					rooms[x][y].nextAction = TURN_RIGHT;
+				}
+				else if (y < myAgent.yPos) {
+					tempGvalue += 0;
+					rooms[x][y].nextAction = FORWARD;
+				}
 			}
 
 			//f(x) = #of rotations + #moves
 			rooms[x][y].gValue = tempGvalue; //number of rotations to reach our target (not the most efficient, can optimize it later)
-			rooms[x][y].hValue = abs(myAgent.xPos - x)+ abs(myAgent.yPos - y); //the manhattan distance
-			rooms[x][y].fValue = rooms[x][y].gValue + rooms[x][y].hValue;
+			rooms[x][y].hValue = abs(myAgent.xPos - x) + abs(myAgent.yPos - y); //the manhattan distance
+			rooms[x][y].fValue = rooms[x][y].gValue + rooms[x][y].hValue + rooms[x][y].pWumpus * 1000.0f + rooms[x][y].pPitfall * 1000.0f;
 		}
 	}
 }

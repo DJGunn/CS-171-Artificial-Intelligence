@@ -43,6 +43,8 @@ class MyAI : public Agent
 
 		double pWumpus = 0; //probability wumpus is in this room
 		double pPitfall = 0; //probability pitfall is in this room
+
+		Action nextAction;
 	};
 
 	struct CompareRoom {
